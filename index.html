@@ -29,8 +29,30 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:30px}
 @media(max-width:600px){.brand{font-size:19px}.top button{padding:8px}.container{padding:0 10px}.card{border-radius:13px}}
 </style>
 <link rel="manifest" href="manifest.webmanifest">
+<style>
+#lockScreen{position:fixed;inset:0;background:linear-gradient(135deg,#08152f,#183463);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}
+#lockScreen .box{background:#fff;border-radius:18px;padding:28px 22px;max-width:340px;width:100%;text-align:center;box-shadow:0 10px 30px #0004}
+#lockScreen h2{margin:0 0 6px;color:var(--primary)}
+#lockScreen p{color:var(--muted);font-size:13px;margin:0 0 18px}
+#lockScreen input{text-align:center;font-size:18px;letter-spacing:2px}
+#lockScreen button{width:100%;margin-top:12px;padding:12px}
+#lockError{color:var(--red);font-size:13px;margin-top:10px;min-height:16px}
+.hidden-app{display:none}
+</style>
 </head>
 <body>
+
+<div id="lockScreen">
+  <div class="box">
+    <h2>🔒 إدارة المجموعات</h2>
+    <p>اكتب كلمة المرور للدخول</p>
+    <input type="password" id="lockPass" placeholder="كلمة المرور" autofocus>
+    <button class="primary" onclick="tryUnlock()">دخول</button>
+    <div id="lockError"></div>
+  </div>
+</div>
+
+<div id="appRoot" class="hidden-app">
 <header><div class="top"><div><div class="brand">إدارة المجموعات</div><div class="sub">لوحة إدارة المجموعات والطلاب والحضور والدفع · <span id="cloudStatus">جاري الاتصال...</span></div></div><button class="gold" onclick="openGroupModal()">＋ مجموعة</button></div></header>
 
 <main class="container">
@@ -48,9 +70,11 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:30px}
 
 <div id="modal" class="modal hidden"><div id="modalBody"></div></div>
 <footer>بياناتك تُحفظ على Firebase ويمكن فتحها من أي جهاز.</footer>
+</div>
 
 <script src="https://www.gstatic.com/firebasejs/12.16.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.16.0/firebase-auth-compat.js"></script>
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyAfcrDfmrJ1ZrUFCgCZiC9II-Hu5UNq_ek",
@@ -63,10 +87,41 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const firestore = firebase.firestore();
+const auth = firebase.auth();
 const dataRef = firestore.collection("data").doc("main");
 let saveChain = Promise.resolve();
 let cloudReady = false;
 let cloudError = "";
+
+const SITE_PASSWORD = "Mhmd11##";
+function tryUnlock(){
+  const val = document.getElementById("lockPass").value;
+  const errEl = document.getElementById("lockError");
+  if(val === SITE_PASSWORD){
+    errEl.textContent = "";
+    document.getElementById("lockPass").disabled = true;
+    auth.signInAnonymously().then(()=>{
+      sessionStorage.setItem("gm_unlocked","1");
+      document.getElementById("lockScreen").style.display = "none";
+      document.getElementById("appRoot").classList.remove("hidden-app");
+    }).catch(err=>{
+      console.error("Auth error:", err);
+      errEl.textContent = "حدث خطأ في الاتصال، حاول تاني.";
+      document.getElementById("lockPass").disabled = false;
+    });
+  } else {
+    errEl.textContent = "كلمة المرور غلط.";
+  }
+}
+document.getElementById("lockPass").addEventListener("keydown", e=>{ if(e.key==="Enter") tryUnlock(); });
+
+// لو المستخدم دخل الباسورد صح قبل كده في نفس الجلسة، ادخله على طول بدون ما يكتبه تاني
+if(sessionStorage.getItem("gm_unlocked")==="1"){
+  auth.signInAnonymously().then(()=>{
+    document.getElementById("lockScreen").style.display = "none";
+    document.getElementById("appRoot").classList.remove("hidden-app");
+  }).catch(()=>{ sessionStorage.removeItem("gm_unlocked"); });
+}
 </script>
 <script>
 const KEY="group_manager_v1";
