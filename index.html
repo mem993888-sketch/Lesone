@@ -148,6 +148,7 @@ function save(){
 function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));}
 function wa(n){let x=String(n||"").replace(/\D/g,"");if(x.startsWith("0"))x="20"+x.slice(1);if(!x.startsWith("20"))x="20"+x;return "https://wa.me/"+x;}
 function groupStudents(gid){return db.students.filter(s=>s.groupId===gid);}
+function groupTimeForDay(g,day){return (g.dayTimes&&g.dayTimes[day])||g.time||"";}
 function todayName(){return mapDay[new Date().getDay()]||"الأحد";}
 function monthKey(d=new Date()){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");}
 function attendanceKey(gid,date){return gid+"|"+date;}
@@ -218,20 +219,22 @@ function home(v){
 }
 function showDay(day){
  const box=document.getElementById("dayContent"); if(!box)return;
- const gs=db.groups.filter(g=>g.days.includes(day)).sort((a,b)=>a.time.localeCompare(b.time));
+ const gs=db.groups.filter(g=>g.days.includes(day)).sort((a,b)=>groupTimeForDay(a,day).localeCompare(groupTimeForDay(b,day)));
  box.innerHTML=gs.length?gs.map(g=>`<div class="card" style="margin-bottom:10px">
- <div class="section-head" style="margin:0 0 8px"><div><b>${esc(g.name)}</b><div class="small">${esc(g.grade||"")} · ${esc(g.time)} · ${groupStudents(g.id).length} طالب</div></div>
+ <div class="section-head" style="margin:0 0 8px"><div><b>${esc(g.name)}</b><div class="small">${esc(g.grade||"")} · ${esc(groupTimeForDay(g,day))} · ${groupStudents(g.id).length} طالب</div></div>
  <button class="primary" onclick="attendance('${g.id}','${day}')">الحضور</button></div>
  </div>`).join(""):`<div class="card empty">لا توجد مجموعات في ${day}.</div>`;
 }
 function groups(v){
  v.innerHTML=`<div class="section-head"><h2>المجموعات</h2><button class="primary" onclick="openGroupModal()">＋ إضافة مجموعة</button></div>
- <div class="grid">${db.groups.map(g=>`<div class="card"><b>${esc(g.name)}</b><div class="small">${esc(g.grade||"")} · ${esc(g.time)} · ${esc(g.days.join("، "))}</div>
+ <div class="grid">${db.groups.map(g=>`<div class="card"><b>${esc(g.name)}</b><div class="small">${esc(g.grade||"")}</div>
+ <div class="small" style="margin-top:6px">${g.days.map(d=>`${esc(d)} ${esc(groupTimeForDay(g,d))}`).join(" · ")}</div>
  <p><b>${groupStudents(g.id).length}</b> طالب · 💰 ${Number(g.fee)||0} جنيه/شهر</p><div class="actions"><button class="primary" onclick="openGroup('${g.id}')">فتح المجموعة</button><button class="ghost" onclick="openGroupModal('${g.id}')">تعديل</button><button class="red" onclick="deleteGroup('${g.id}')">حذف</button></div></div>`).join("")||`<div class="card empty">لم تضف أي مجموعات بعد.</div>`}</div>`;
 }
 function openGroup(gid){
  const g=db.groups.find(x=>x.id===gid), ss=groupStudents(gid);
- document.getElementById("modalBody").innerHTML=`<h2>${esc(g.name)}</h2><div class="small">${esc(g.grade||"")} · ${esc(g.days.join("، "))} · ${esc(g.time)} · الاشتراك: ${Number(g.fee)||0} جنيه شهريًا</div>
+ document.getElementById("modalBody").innerHTML=`<h2>${esc(g.name)}</h2><div class="small">${esc(g.grade||"")} · الاشتراك: ${Number(g.fee)||0} جنيه شهريًا</div>
+ <div class="small" style="margin:6px 0 4px">${g.days.map(d=>`${esc(d)} الساعة ${esc(groupTimeForDay(g,d))}`).join(" · ")}</div>
  <div class="actions" style="margin:14px 0"><button class="primary" onclick="openStudentModal('', '${gid}')">＋ إضافة طالب</button><button class="gold" onclick="attendance('${gid}','${g.days[0]||todayName()}')">تسجيل الحضور</button></div>
  <div class="card">${ss.length?ss.map(studentRow).join(""):`<div class="empty">لا يوجد طلاب في المجموعة بعد.</div>`}</div>`;
  document.getElementById("modal").classList.remove("hidden");
@@ -263,20 +266,41 @@ function doSearch(){
  r.innerHTML=q?(arr.length?`<div class="card">${arr.map(studentRow).join("")}</div>`:`<div class="card empty">لا توجد نتائج.</div>`):"";
 }
 function openGroupModal(id){
- const g=id?db.groups.find(x=>x.id===id):{name:"",grade:"",time:"",days:[]};
+ const g=id?db.groups.find(x=>x.id===id):{name:"",grade:"",fee:0,days:[],dayTimes:{}};
  document.getElementById("modalBody").innerHTML=`<h2>${id?"تعديل المجموعة":"إضافة مجموعة"}</h2>
- <div class="formgrid"><div><label>اسم المجموعة</label><input id="gn" value="${esc(g.name)}"></div><div><label>الصف</label><input id="gg" value="${esc(g.grade)}"></div><div><label>وقت الحصة</label><input id="gt" type="time" value="${esc(g.time)}"></div><div><label>الاشتراك الشهري الموحد (جنيه)</label><input id="gf" type="number" min="0" value="${Number(g.fee)||0}"></div></div>
- <label style="margin-top:12px">أيام المجموعة</label><div class="actions">${days.map(d=>`<button type="button" class="${g.days.includes(d)?'primary':'ghost'}" onclick="toggleDay(this,'${d}')">${d}</button>`).join("")}</div>
+ <div class="formgrid"><div><label>اسم المجموعة</label><input id="gn" value="${esc(g.name)}"></div><div><label>الصف</label><input id="gg" value="${esc(g.grade)}"></div><div><label>الاشتراك الشهري الموحد (جنيه)</label><input id="gf" type="number" min="0" value="${Number(g.fee)||0}"></div></div>
+ <label style="margin-top:14px;display:block">أيام ومواعيد المجموعة</label>
+ <div class="card" style="padding:6px 14px;margin-top:6px">
+ ${days.map(d=>{
+   const checked=g.days&&g.days.includes(d);
+   const t=(g.dayTimes&&g.dayTimes[d])||g.time||"";
+   return `<div class="row" style="padding:8px 0"><label style="display:flex;align-items:center;gap:8px;flex:1;margin:0;font-size:15px;color:var(--text)"><input type="checkbox" class="dayChk" data-day="${d}" ${checked?"checked":""} onchange="toggleDayTimeInput(this)" style="width:auto"> ${d}</label><input type="time" class="dayTimeInput" data-day="${d}" value="${esc(t)}" style="max-width:130px" ${checked?"":"disabled"}></div>`;
+ }).join("")}
+ </div>
  <div class="actions" style="margin-top:18px"><button class="primary" onclick="saveGroup('${id||""}')">حفظ</button><button class="ghost" onclick="closeModal()">إلغاء</button></div>`;
  document.getElementById("modal").classList.remove("hidden");
 }
-function toggleDay(btn,d){btn.classList.toggle("primary");btn.classList.toggle("ghost");btn.dataset.on=btn.classList.contains("primary")?"1":"";}
+function toggleDayTimeInput(chk){
+ const day=chk.dataset.day;
+ const input=document.querySelector(`#modalBody .dayTimeInput[data-day="${day}"]`);
+ if(input) input.disabled=!chk.checked;
+}
 function saveGroup(id){
- const name=document.getElementById("gn").value.trim(),grade=document.getElementById("gg").value.trim(),time=document.getElementById("gt").value,fee=Number(document.getElementById("gf").value)||0;
- const selected=[...document.querySelectorAll("#modalBody button[data-on='1']")].map(x=>x.textContent);
- if(!name||!time||!selected.length){alert("اكتب اسم المجموعة والوقت واختر يومًا واحدًا على الأقل.");return}
- if(id){let g=db.groups.find(x=>x.id===id);Object.assign(g,{name,grade,time,fee,days:selected});}
- else db.groups.push({id:crypto.randomUUID(),name,grade,time,fee,days:selected});
+ const name=document.getElementById("gn").value.trim(),grade=document.getElementById("gg").value.trim(),fee=Number(document.getElementById("gf").value)||0;
+ const chks=[...document.querySelectorAll("#modalBody .dayChk")];
+ const selectedDays=[],dayTimes={};
+ for(const chk of chks){
+   if(chk.checked){
+     const day=chk.dataset.day;
+     const input=document.querySelector(`#modalBody .dayTimeInput[data-day="${day}"]`);
+     const t=input?input.value:"";
+     if(!t){alert("حدد ميعاد يوم "+day);return}
+     selectedDays.push(day); dayTimes[day]=t;
+   }
+ }
+ if(!name||!selectedDays.length){alert("اكتب اسم المجموعة واختر يومًا واحدًا على الأقل مع تحديد ميعاده.");return}
+ if(id){let g=db.groups.find(x=>x.id===id);Object.assign(g,{name,grade,fee,days:selectedDays,dayTimes});delete g.time;}
+ else db.groups.push({id:crypto.randomUUID(),name,grade,fee,days:selectedDays,dayTimes});
  closeModal();save();
 }
 function deleteGroup(id){if(confirm("حذف المجموعة؟ الطلاب المرتبطون بها سيظلون محفوظين بدون مجموعة.")){db.students.filter(s=>s.groupId===id).forEach(s=>s.groupId="");db.groups=db.groups.filter(g=>g.id!==id);save();}}
