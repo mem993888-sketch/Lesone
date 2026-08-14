@@ -14,7 +14,7 @@ header{background:linear-gradient(135deg,#08152f,#183463);color:#fff;padding:18p
 .container{max-width:1100px;margin:18px auto;padding:0 14px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
 .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 4px 14px #10264f0b}
 .stat{display:flex;justify-content:space-between;align-items:center}.stat b{font-size:28px}.stat span{color:var(--muted);font-size:13px}
-.tabs{display:flex;gap:8px;overflow:auto;margin:15px 0}.tab,button{border:0;border-radius:10px;padding:10px 14px;font:inherit;cursor:pointer}.tab{background:#e9edf5;color:var(--text);white-space:nowrap}.tab.active,button.primary{background:var(--primary);color:#fff}
+.tabs{display:flex;gap:8px;overflow:auto;margin:15px 0;position:sticky;top:68px;background:var(--bg);z-index:4;padding:4px 0}.tab,button{border:0;border-radius:10px;padding:10px 14px;font:inherit;cursor:pointer}.tab{background:#e9edf5;color:var(--text);white-space:nowrap}.tab.active,button.primary{background:var(--primary);color:#fff}
 button.gold{background:var(--gold);color:#111}button.green{background:#e7f7ee;color:var(--green)}button.red{background:#fdebed;color:var(--red)}button.ghost{background:#f0f2f6;color:var(--text)}
 .section-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:20px 0 10px}.section-head h2{margin:0;font-size:19px}
 .row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--border)}.row:last-child{border-bottom:0}
@@ -56,14 +56,14 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:30px}
 <header><div class="top"><div><div class="brand">إدارة المجموعات</div><div class="sub">لوحة إدارة المجموعات والطلاب والحضور والدفع · <span id="cloudStatus">جاري الاتصال...</span></div></div><button class="gold" onclick="openGroupModal()">＋ مجموعة</button></div></header>
 
 <main class="container">
-  <div id="stats" class="grid"></div>
-
   <div class="tabs">
     <button class="tab active" data-view="home">الرئيسية</button>
     <button class="tab" data-view="groups">المجموعات</button>
     <button class="tab" data-view="students">الطلاب</button>
     <button class="tab" data-view="search">بحث</button>
   </div>
+
+  <div id="stats" class="grid"></div>
 
   <section id="view"></section>
 </main>
@@ -149,6 +149,14 @@ function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&l
 function wa(n){let x=String(n||"").replace(/\D/g,"");if(x.startsWith("0"))x="20"+x.slice(1);if(!x.startsWith("20"))x="20"+x;return "https://wa.me/"+x;}
 function groupStudents(gid){return db.students.filter(s=>s.groupId===gid);}
 function groupTimeForDay(g,day){return (g.dayTimes&&g.dayTimes[day])||g.time||"";}
+function studentAbsencesThisMonth(sid){
+ const mk=monthKey(); let count=0;
+ for(const key in db.attendance){
+   const date=key.split("|")[1];
+   if(date && date.startsWith(mk) && db.attendance[key][sid]==="absent") count++;
+ }
+ return count;
+}
 function todayName(){return mapDay[new Date().getDay()]||"الأحد";}
 function monthKey(d=new Date()){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");}
 function attendanceKey(gid,date){return gid+"|"+date;}
@@ -245,8 +253,8 @@ function students(v){
 }
 function studentRow(s){
  const g=db.groups.find(x=>x.id===s.groupId), p=db.payments[s.id+"|"+monthKey()]==="paid";
- return `<div class="row"><div><div class="student-name">${esc(s.name)}</div><div class="small">${esc(g?.name||"بدون مجموعة")}</div>
- <div class="actions" style="margin-top:5px"><a class="wa" href="${wa(s.phone)}" target="_blank">💬 الطالب</a><a class="wa" href="${wa(s.guardian)}" target="_blank">💬 ولي الأمر</a></div></div>
+ const absences=studentAbsencesThisMonth(s.id), warn=absences>=3;
+ return `<div class="row"><div><div class="student-name" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span>${esc(s.name)}</span><a class="wa" href="${wa(s.phone)}" target="_blank" style="font-size:16px">💬</a><a class="wa" href="tel:${esc(s.guardian)}" style="font-size:16px;color:var(--primary)">📞</a>${warn?`<span class="badge unpaid">⚠️ غاب ${absences} حصص</span>`:""}</div><div class="small">${esc(g?.name||"بدون مجموعة")}</div></div>
  <div class="actions"><button class="badge ${p?'paid':'unpaid'}" style="border:0;cursor:pointer" onclick="togglePayment('${s.id}')">${p?'دفع':'لم يدفع'}</button><button class="ghost" onclick="openStudentModal('${s.id}')">فتح</button></div></div>`;
 }
 function togglePayment(sid){
