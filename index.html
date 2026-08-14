@@ -31,25 +31,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:30px}
 <link rel="manifest" href="manifest.webmanifest">
 </head>
 <body>
-
-<div id="loginScreen" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:linear-gradient(135deg,#08152f,#183463)">
-  <div style="background:#fff;border-radius:18px;padding:28px 22px;max-width:360px;width:100%;box-shadow:0 10px 30px #0004">
-    <div style="text-align:center;font-size:20px;font-weight:800;color:#152238;margin-bottom:4px">إدارة المجموعات</div>
-    <div style="text-align:center;font-size:13px;color:#6b7280;margin-bottom:18px">سجّل الدخول للوصول إلى بياناتك</div>
-    <label>البريد الإلكتروني</label>
-    <input id="loginEmail" type="email" placeholder="example@email.com" style="margin-bottom:12px">
-    <label>كلمة المرور</label>
-    <div style="position:relative;margin-bottom:6px">
-      <input id="loginPass" type="password" placeholder="••••••••" style="margin-bottom:0;padding-left:70px">
-      <button type="button" onclick="const p=document.getElementById('loginPass');p.type=p.type==='password'?'text':'password';this.textContent=p.type==='password'?'إظهار':'إخفاء';" style="position:absolute;left:6px;top:50%;transform:translateY(-50%);background:#f0f2f6;color:#152238;padding:6px 10px;font-size:12px;border-radius:8px">إظهار</button>
-    </div>
-    <div id="loginError" style="color:#d9363e;font-size:13px;min-height:18px;margin-bottom:10px"></div>
-    <button id="loginBtn" class="primary" style="width:100%;padding:12px">دخول</button>
-  </div>
-</div>
-
-<div id="appContent" class="hidden">
-<header><div class="top"><div><div class="brand">إدارة المجموعات</div><div class="sub">لوحة إدارة المجموعات والطلاب والحضور والدفع · <span id="cloudStatus">جاري الاتصال...</span></div></div><div style="display:flex;gap:8px"><button class="gold" onclick="openGroupModal()">＋ مجموعة</button><button class="ghost" onclick="firebase.auth().signOut()">خروج</button></div></div></header>
+<header><div class="top"><div><div class="brand">إدارة المجموعات</div><div class="sub">لوحة إدارة المجموعات والطلاب والحضور والدفع · <span id="cloudStatus">جاري الاتصال...</span></div></div><button class="gold" onclick="openGroupModal()">＋ مجموعة</button></div></header>
 
 <main class="container">
   <div id="stats" class="grid"></div>
@@ -66,11 +48,9 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:30px}
 
 <div id="modal" class="modal hidden"><div id="modalBody"></div></div>
 <footer>بياناتك تُحفظ على Firebase ويمكن فتحها من أي جهاز.</footer>
-</div>
 
 <script src="https://www.gstatic.com/firebasejs/12.16.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/12.16.0/firebase-auth-compat.js"></script>
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyAfcrDfmrJ1ZrUFCgCZiC9II-Hu5UNq_ek",
@@ -278,32 +258,9 @@ document.getElementById("modal").addEventListener("click",e=>{if(e.target.id==="
 function exportBackup(){
  const blob=new Blob([JSON.stringify(db,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="إدارة-المجموعات-نسخة-احتياطية.json";a.click();URL.revokeObjectURL(a.href);
 }
-const auth = firebase.auth();
-function doLogin(){
-  const email=document.getElementById("loginEmail").value.trim();
-  const pass=document.getElementById("loginPass").value.trim();
-  const errEl=document.getElementById("loginError");
-  errEl.textContent="";
-  if(!email||!pass){errEl.textContent="اكتب البريد الإلكتروني وكلمة المرور.";return}
-  auth.signInWithEmailAndPassword(email,pass).catch(err=>{
-    errEl.textContent="خطأ: "+err.code+" — "+err.message;
-    console.error("Login error:",err);
-  });
-}
-document.getElementById("loginBtn").onclick=doLogin;
-document.getElementById("loginPass").addEventListener("keydown",e=>{if(e.key==="Enter")doLogin();});
-auth.onAuthStateChanged(user=>{
-  if(user){
-    document.getElementById("loginScreen").classList.add("hidden");
-    document.getElementById("appContent").classList.remove("hidden");
-    render();
-    setCloudStatus();
-    loadCloudData();
-  }else{
-    document.getElementById("loginScreen").classList.remove("hidden");
-    document.getElementById("appContent").classList.add("hidden");
-  }
-});
+render();
+setCloudStatus();
+loadCloudData();
 </script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("./sw.js").catch(()=>{});}</script>
 </body>
