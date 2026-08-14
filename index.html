@@ -39,7 +39,10 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:30px}
     <label>البريد الإلكتروني</label>
     <input id="loginEmail" type="email" placeholder="example@email.com" style="margin-bottom:12px">
     <label>كلمة المرور</label>
-    <input id="loginPass" type="password" placeholder="••••••••" style="margin-bottom:6px">
+    <div style="position:relative;margin-bottom:6px">
+      <input id="loginPass" type="password" placeholder="••••••••" style="margin-bottom:0;padding-left:70px">
+      <button type="button" onclick="const p=document.getElementById('loginPass');p.type=p.type==='password'?'text':'password';this.textContent=p.type==='password'?'إظهار':'إخفاء';" style="position:absolute;left:6px;top:50%;transform:translateY(-50%);background:#f0f2f6;color:#152238;padding:6px 10px;font-size:12px;border-radius:8px">إظهار</button>
+    </div>
     <div id="loginError" style="color:#d9363e;font-size:13px;min-height:18px;margin-bottom:10px"></div>
     <button id="loginBtn" class="primary" style="width:100%;padding:12px">دخول</button>
   </div>
@@ -278,12 +281,12 @@ function exportBackup(){
 const auth = firebase.auth();
 function doLogin(){
   const email=document.getElementById("loginEmail").value.trim();
-  const pass=document.getElementById("loginPass").value;
+  const pass=document.getElementById("loginPass").value.trim();
   const errEl=document.getElementById("loginError");
   errEl.textContent="";
   if(!email||!pass){errEl.textContent="اكتب البريد الإلكتروني وكلمة المرور.";return}
   auth.signInWithEmailAndPassword(email,pass).catch(err=>{
-    errEl.textContent="البريد الإلكتروني أو كلمة المرور غير صحيحة.";
+    errEl.textContent="خطأ: "+err.code+" — "+err.message;
     console.error("Login error:",err);
   });
 }
